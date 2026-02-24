@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import pickle
 import streamlit as st
-from sklearn.preprocessing import StandardScaler
 import plotly.express as px
 import pydeck as pdk
 from faker import Faker
@@ -14,8 +13,9 @@ import os
 import joblib
 
 # Define paths relative to the script location
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "rf_best.pkl")
-SCALER_PATH = os.path.join(os.path.dirname(__file__), "scaler.pkl")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "nexora_attrition_model.pkl")
+DEPT_ENCODER_PATH = os.path.join(os.path.dirname(__file__), "department_encoder.pkl")
+JOB_ENCODER_PATH = os.path.join(os.path.dirname(__file__), "job_encoder.pkl")
 st.set_page_config(
     page_title="StratifyHR | Employee Analytics",
     page_icon="💼",
@@ -56,17 +56,40 @@ def load_model():
         # Fallback to pickle if joblib fails
         with open(MODEL_PATH, "rb") as model_file:
             return pickle.load(model_file)
+
 @st.cache_resource
-def load_scaler():
+def load_dept_encoder():
     try:
-        # Try using joblib first (more reliable for scikit-learn objects)
-        return joblib.load(SCALER_PATH)
+        return joblib.load(DEPT_ENCODER_PATH)
     except:
-        # Fallback to pickle if joblib fails
-        with open(SCALER_PATH, "rb") as scaler_file:
-            return pickle.load(scaler_file)
-model = load_model()
-scaler = load_scaler()
+        with open(DEPT_ENCODER_PATH, "rb") as f:
+            return pickle.load(f)
+
+@st.cache_resource
+def load_job_encoder():
+    try:
+        return joblib.load(JOB_ENCODER_PATH)
+    except:
+        with open(JOB_ENCODER_PATH, "rb") as f:
+            return pickle.load(f)
+
+try:
+    model = load_model()
+except FileNotFoundError:
+    st.error(f"❌ Model file not found: {MODEL_PATH}")
+    st.stop()
+
+try:
+    dept_encoder = load_dept_encoder()
+except FileNotFoundError:
+    st.error(f"❌ Department encoder not found: {DEPT_ENCODER_PATH}")
+    st.stop()
+
+try:
+    job_encoder = load_job_encoder()
+except FileNotFoundError:
+    st.error(f"❌ Job encoder not found: {JOB_ENCODER_PATH}")
+    st.stop()
 fake = Faker()
 
 # --- Advanced UI Configuration ---
@@ -391,18 +414,16 @@ def display_upload_data():
             with st.form("data_processing_form"):
                 st.markdown("### ⚙️ Data Processing Options")
                 
-                use_scaler = st.checkbox("Apply feature scaling - StandardScaler", value=False)
                 have_true_labels = st.checkbox("File contains True labels", value=False)
                 
                 if st.form_submit_button("Process Data"):
                     with st.spinner("Analyzing data..."):
-                        process_and_store_data(st.session_state.uploaded_data, use_scaler, have_true_labels)
+                        process_and_store_data(st.session_state.uploaded_data, have_true_labels)
                     st.success("Data processed successfully!")
 
-def process_and_store_data(data, use_scaler, have_true_labels):
+def process_and_store_data(data, have_true_labels):
     """
-    Processes uploaded data, checks required features, applies scaling (if selected),
-    and stores predictions & risk categories in session state.
+    Processes uploaded data, checks required features, and stores predictions & risk categories in session state.
     """
     try:
         required_features = get_required_features_from_model(model)  # Ensure this function returns a list of features
@@ -423,13 +444,9 @@ def process_and_store_data(data, use_scaler, have_true_labels):
 
         # Prepare data for prediction
         data_for_prediction = data[required_features]
-        if use_scaler:
-            data_scaled = scaler.transform(data_for_prediction)
-        else:
-            data_scaled = data_for_prediction
 
         # Make predictions
-        predictions = model.predict_proba(data_scaled)[:, 1]
+        predictions = model.predict_proba(data_for_prediction)[:, 1]
 
         # Categorize risk levels
         data['Risk Category'] = np.select(
