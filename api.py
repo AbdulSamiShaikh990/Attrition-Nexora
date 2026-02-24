@@ -36,17 +36,45 @@ def root():
 
 @app.route('/api/test', methods=['GET'])
 def test_endpoint():
-    """Test endpoint - returns sample prediction"""
+    """Test endpoint - requires query parameters"""
     try:
+        # Get required parameters from URL query string
+        salary = request.args.get('salary', None, type=int)
+        performance_rating = request.args.get('performanceRating', None, type=int)
+        department = request.args.get('department', None, type=str)
+        job_title = request.args.get('jobTitle', None, type=str)
+        
+        # Validate all fields are provided
+        if None in [salary, performance_rating, department, job_title]:
+            return jsonify({
+                'success': False,
+                'error': 'Missing required parameters',
+                'required': ['salary', 'performanceRating', 'department', 'jobTitle'],
+                'example': '/api/test?salary=50000&performanceRating=3&department=Sales&jobTitle=Sales%20Representative'
+            }), 400
+        
         result = predict_single(
-            salary=50000,
-            performance_rating=3,
-            department='Sales',
-            job_title='Sales Representative'
+            salary=salary,
+            performance_rating=performance_rating,
+            department=department,
+            job_title=job_title
         )
+        
+        if 'error' in result:
+            return jsonify({
+                'success': False,
+                **result
+            }), 400
+        
         return jsonify({
             'success': True,
-            'message': 'Test prediction successful',
+            'message': 'Prediction successful',
+            'input': {
+                'salary': salary,
+                'performanceRating': performance_rating,
+                'department': department,
+                'jobTitle': job_title
+            },
             'prediction': result
         }), 200
     except Exception as e:
@@ -116,46 +144,20 @@ def get_config():
 def predict_single(salary, performance_rating, department, job_title):
     """Predict attrition for single employee"""
     try:
-        # Department mapping for Nexora
-        dept_mapping = {
-            'developer': 'Research & Development',
-            'development': 'Research & Development',
-            'it': 'Research & Development',
-            'tech': 'Research & Development',
-            'engineering': 'Research & Development',
-            'sales': 'Sales',
-            'marketing': 'Sales',
-            'hr': 'Human Resources',
-            'human resources': 'Human Resources',
-            'admin': 'Human Resources'
-        }
+        # No hardcoded mappings - use encoder classes directly
+        # If user provides invalid department/job_title, raise error
         
-        # Job title mapping
-        job_mapping = {
-            'developer': 'Research Scientist',
-            'senior developer': 'Research Scientist',
-            'junior developer': 'Research Scientist',
-            'tech lead': 'Manager',
-            'team lead': 'Manager',
-            'software engineer': 'Research Scientist',
-            'engineer': 'Research Scientist',
-            'hr manager': 'Manager',
-            'hr executive': 'Human Resources',
-            'sales manager': 'Manager',
-            'sales rep': 'Sales Representative'
-        }
-        
-        # Map department
-        dept_lower = department.lower()
+        # Validate department
         if department not in dept_encoder.classes_:
-            department = dept_mapping.get(dept_lower, 'Research & Development')
-            logger.warning(f'Mapped department to: {department}')
+            return {
+                'error': f'Invalid department. Supported: {list(dept_encoder.classes_)}'
+            }
         
-        # Map job title
-        job_lower = job_title.lower()
+        # Validate job title
         if job_title not in job_encoder.classes_:
-            job_title = job_mapping.get(job_lower, 'Research Scientist')
-            logger.warning(f'Mapped job title to: {job_title}')
+            return {
+                'error': f'Invalid job title. Supported: {list(job_encoder.classes_)}'
+            }
         
         # Encode
         dept_enc = dept_encoder.transform([department])[0]
@@ -176,20 +178,12 @@ def predict_single(salary, performance_rating, department, job_title):
         else:
             risk_category = "High-risk"
         
-        # Generate factors
+        # Generate factors (no hardcoded thresholds - just based on input)
         factors = []
-        if salary < 30000:
-            factors.append("⚠️ Low salary (< Rs 30,000)")
-        elif salary > 60000:
-            factors.append("✅ Good salary (> Rs 60,000)")
-        
-        if performance_rating <= 2:
-            factors.append("⚠️ Low performance rating")
-        elif performance_rating >= 4:
-            factors.append("✅ High performance rating")
-        
-        if department == 'Sales':
-            factors.append("⚠️ High-attrition department: Sales")
+        factors.append(f"💰 Salary: Rs {salary:,}")
+        factors.append(f"⭐ Performance Rating: {performance_rating}/4")
+        factors.append(f"🏢 Department: {department}")
+        factors.append(f"👔 Job Title: {job_title}")
         
         return {
             'risk_score': round(risk_proba, 3),
