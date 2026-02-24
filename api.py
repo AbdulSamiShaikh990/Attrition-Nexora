@@ -17,6 +17,54 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Root route for testing
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint - API is alive"""
+    return jsonify({
+        'status': 'API is running',
+        'app': 'Attrition-Nexora',
+        'version': '1.0',
+        'endpoints': {
+            '/api/health': 'Health check endpoint',
+            '/api/config': 'Get API configuration',
+            '/api/predict-attrition': 'Single employee prediction (POST)',
+            '/api/predict-attrition-batch': 'Batch predictions (POST)',
+            '/api/test': 'Test endpoint with sample data'
+        }
+    }), 200
+
+@app.route('/api/test', methods=['GET'])
+def test_endpoint():
+    """Test endpoint - returns sample prediction"""
+    try:
+        result = predict_single(
+            salary=50000,
+            performance_rating=3,
+            department='Sales',
+            job_title='Sales Representative'
+        )
+        return jsonify({
+            'success': True,
+            'message': 'Test prediction successful',
+            'prediction': result
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# Global error handlers
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint not found', 'available_endpoints': ['/api/health', '/api/config', '/api/predict-attrition', '/api/predict-attrition-batch']}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': 'Internal server error', 'details': str(error)}), 500
+
 # Load model and encoders
 try:
     model = joblib.load('nexora_attrition_model.pkl')
@@ -36,13 +84,17 @@ except Exception as e:
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check"""
-    return jsonify({
-        'status': 'ok',
-        'message': 'Attrition API - 4 Fields (Nexora)',
-        'model_loaded': model is not None,
-        'accuracy': f"{config.get('accuracy', 0)*100:.2f}%" if config else 'N/A',
-        'fields': ['salary', 'performanceRating', 'department', 'jobTitle']
-    }), 200
+    try:
+        return jsonify({
+            'status': 'ok',
+            'message': 'Attrition API is working',
+            'model_loaded': model is not None,
+            'accuracy': f"{config.get('accuracy', 0)*100:.2f}%" if config else 'N/A',
+            'fields': ['salary', 'performanceRating', 'department', 'jobTitle']
+        }), 200
+    except Exception as e:
+        logger.error(f"Health check error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @app.route('/api/config', methods=['GET'])
