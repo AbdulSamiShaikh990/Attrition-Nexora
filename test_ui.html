@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora Attrition Prediction - Test UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result.high-risk {
+            background: #fee;
+            border: 2px solid #f44336;
+        }
+        
+        .result.medium-risk {
+            background: #fff4e6;
+            border: 2px solid #ff9800;
+        }
+        
+        .result.low-risk {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+        }
+        
+        .risk-score {
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .risk-category {
+            font-size: 24px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .factors {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .factors h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .factor-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+        
+        .error {
+            background: #fee;
+            border: 2px solid #f44336;
+            padding: 15px;
+            border-radius: 8px;
+            color: #d32f2f;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .api-status {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .api-status.online {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .api-status.offline {
+            background: #fee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Attrition Risk Predictor</h1>
+        <p class="subtitle">Nexora HCM Integration - ML Model Test</p>
+        
+        <div id="apiStatus" class="api-status offline">⚠️ Checking API status...</div>
+        
+        <form id="predictionForm">
+            <div class="form-group">
+                <label for="employeeName">👤 Employee Name</label>
+                <input type="text" id="employeeName" placeholder="e.g., Ali Khan" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="employeeId">🆔 Employee ID</label>
+                <input type="text" id="employeeId" placeholder="e.g., E123" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="salary">💰 Monthly Salary (Rs)</label>
+                <input type="number" id="salary" placeholder="e.g., 5000" min="1000" max="500000" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="jobTitle">💼 Job Title</label>
+                <select id="jobTitle" required>
+                    <option value="">Select Job Title...</option>
+                    <option value="Sales Executive">Sales Executive</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Research Scientist">Research Scientist</option>
+                    <option value="Laboratory Technician">Laboratory Technician</option>
+                    <option value="Healthcare Representative">Healthcare Representative</option>
+                    <option value="Human Resources">Human Resources</option>
+                    <option value="Research Director">Research Director</option>
+                    <option value="Manufacturing Director">Manufacturing Director</option>
+                    <option value="Sales Representative">Sales Representative</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="performanceRating">⭐ Performance Rating (1-4)</label>
+                <select id="performanceRating" required>
+                    <option value="">Select Rating...</option>
+                    <option value="1">1 - Poor</option>
+                    <option value="2">2 - Below Average</option>
+                    <option value="3">3 - Good</option>
+                    <option value="4">4 - Excellent</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="department">🏢 Department</label>
+                <select id="department" required>
+                    <option value="">Select Department...</option>
+                    <option value="Human Resources">Human Resources</option>
+                    <option value="Research & Development">Research & Development</option>
+                    <option value="Sales">Sales</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn">🔮 Predict Attrition Risk</button>
+        </form>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Analyzing employee data...</p>
+        </div>
+        
+        <div id="error" class="error"></div>
+        
+        <div id="result" class="result">
+            <div class="risk-score" id="riskScore"></div>
+            <div class="risk-category" id="riskCategory"></div>
+            
+            <div class="factors">
+                <h3>📊 Employee Details</h3>
+                <div class="factor-item">👤 <strong>Name:</strong> <span id="resultName"></span></div>
+                <div class="factor-item">🆔 <strong>ID:</strong> <span id="resultId"></span></div>
+                <div class="factor-item">💰 <strong>Salary:</strong> Rs <span id="resultSalary"></span></div>
+                <div class="factor-item">🏢 <strong>Department:</strong> <span id="resultDept"></span></div>
+                <div class="factor-item">💼 <strong>Job:</strong> <span id="resultJob"></span></div>
+                <div class="factor-item">⭐ <strong>Performance:</strong> <span id="resultPerf"></span>/4</div>
+            </div>
+            
+            <div class="factors" id="riskFactorsDiv" style="display: none;">
+                <h3>⚠️ Risk Factors</h3>
+                <div id="riskFactors"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:5000';
+        
+        // Check API status on load
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    document.getElementById('apiStatus').className = 'api-status online';
+                    document.getElementById('apiStatus').textContent = `✅ API Online - Model Accuracy: ${data.accuracy}`;
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').className = 'api-status offline';
+                document.getElementById('apiStatus').textContent = '❌ API Offline - Please start: python api.py';
+            }
+        }
+        
+        checkAPIStatus();
+        
+        // Handle form submission
+        document.getElementById('predictionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Hide previous results
+            document.getElementById('result').classList.remove('show');
+            document.getElementById('error').classList.remove('show');
+            
+            // Show loading
+            document.getElementById('loading').classList.add('show');
+            
+            // Get form data
+            const payload = {
+                employee_name: document.getElementById('employeeName').value,
+                employee_id: document.getElementById('employeeId').value,
+                salary: parseInt(document.getElementById('salary').value),
+                jobTitle: document.getElementById('jobTitle').value,
+                performanceRating: parseInt(document.getElementById('performanceRating').value),
+                department: document.getElementById('department').value
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/api/predict-attrition`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                // Hide loading
+                document.getElementById('loading').classList.remove('show');
+                
+                if (data.success) {
+                    const pred = data.prediction;
+                    
+                    // Show result
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.className = 'result show';
+                    
+                    if (pred.risk_category === 'High-risk') {
+                        resultDiv.classList.add('high-risk');
+                        document.getElementById('riskScore').style.color = '#f44336';
+                    } else if (pred.risk_category === 'Medium-risk') {
+                        resultDiv.classList.add('medium-risk');
+                        document.getElementById('riskScore').style.color = '#ff9800';
+                    } else {
+                        resultDiv.classList.add('low-risk');
+                        document.getElementById('riskScore').style.color = '#4caf50';
+                    }
+                    
+                    // Fill in results
+                    document.getElementById('riskScore').textContent = `${pred.risk_percentage}%`;
+                    document.getElementById('riskCategory').textContent = pred.risk_category;
+                    document.getElementById('resultName').textContent = pred.employee_name;
+                    document.getElementById('resultId').textContent = pred.employee_id;
+                    document.getElementById('resultSalary').textContent = pred.prediction_details.salary.toLocaleString();
+                    document.getElementById('resultDept').textContent = pred.prediction_details.department;
+                    document.getElementById('resultJob').textContent = pred.prediction_details.job_title;
+                    document.getElementById('resultPerf').textContent = pred.prediction_details.performance_rating;
+                    
+                    // Show risk factors if any
+                    if (pred.factors && pred.factors.length > 0) {
+                        document.getElementById('riskFactorsDiv').style.display = 'block';
+                        document.getElementById('riskFactors').innerHTML = pred.factors
+                            .map(f => `<div class="factor-item">${f}</div>`)
+                            .join('');
+                    } else {
+                        document.getElementById('riskFactorsDiv').style.display = 'none';
+                    }
+                } else {
+                    // Show error
+                    document.getElementById('error').textContent = `Error: ${data.error}`;
+                    document.getElementById('error').classList.add('show');
+                }
+            } catch (error) {
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('error').textContent = `Connection Error: ${error.message}. Make sure API is running!`;
+                document.getElementById('error').classList.add('show');
+            }
+        });
+    </script>
+</body>
+</html>

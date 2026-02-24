@@ -1,0 +1,28 @@
+{
+  "feature_names": [
+    "salary",
+    "performanceRating",
+    "department",
+    "jobTitle"
+  ],
+  "departments": [
+    "Human Resources",
+    "Research & Development",
+    "Sales"
+  ],
+  "job_titles": [
+    "Healthcare Representative",
+    "Human Resources",
+    "Laboratory Technician",
+    "Manager",
+    "Manufacturing Director",
+    "Research Director",
+    "Research Scientist",
+    "Sales Executive",
+    "Sales Representative"
+  ],
+  "accuracy": 0.7108843537414966,
+  "trained_on": "2026-02-17 16:33:15.169615",
+  "total_samples": 1470,
+  "fields": 4
+}
